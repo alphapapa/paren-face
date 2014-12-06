@@ -72,17 +72,24 @@ See `global-paren-face-mode' for an easy way to do so."
   '(lisp-mode
     emacs-lisp-mode lisp-interaction-mode ielm-mode
     scheme-mode inferior-scheme-mode
-    clojure-mode cider-repl-mode nrepl-mode
-    arc-mode inferior-arc-mode)
-  "Major modes in which `paren-face-mode' should be turned on.
+    arc-mode inferior-arc-mode
+    (clojure-mode    . "[(){}\[\]]")
+    (cider-repl-mode . "[(){}\[\]]")
+    (nrepl-mode      . "[(){}\[\]]"))
+  "List of major modes for which `paren-face-mode' is turned on.
 When `global-paren-face-mode' is turned on, the buffer-local mode
 is turned on in all buffers whose major mode is or derives from
-one of the modes listed here."
-  :group 'paren-face)
+one of the modes listed here.  Each element can also have the
+form (MODE . REGEXP); in which case REGEXP is used instead of
+`paren-face-regexp' for buffers using the respective MODE."
+  :group 'paren-face
+  :type '(repeat (choice (symbol :tag "Mode")
+                         (cons (symbol :tag "Mode") regexp))))
 
 (defcustom paren-face-regexp "[()]"
   "Regular expression to match parentheses."
-  :group 'paren-face)
+  :group 'paren-face
+  :type 'regexp)
 
 (defvar paren-face-mode-lighter "")
 
@@ -90,7 +97,9 @@ one of the modes listed here."
 (define-minor-mode paren-face-mode
   "Use a dedicated face just for parentheses."
   :lighter paren-face-mode-lighter
-  (let ((keywords `((,paren-face-regexp 0 'parenthesis))))
+  (let ((keywords `((,(or (cdr (assq major-mode paren-face-modes))
+                          paren-face-regexp)
+                     0 'parenthesis))))
     (if paren-face-mode
         (font-lock-add-keywords  nil keywords)
       (font-lock-remove-keywords nil keywords)))
@@ -103,7 +112,10 @@ one of the modes listed here."
   :group 'paren-face)
 
 (defun turn-on-paren-face-mode-if-desired ()
-  (when (apply 'derived-mode-p paren-face-modes)
+  (when (apply 'derived-mode-p
+               (mapcar (lambda (elt)
+                         (if (atom elt) elt (car elt)))
+                       paren-face-modes))
     (paren-face-mode 1)))
 
 (provide 'paren-face)
